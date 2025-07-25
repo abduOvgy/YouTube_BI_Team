@@ -1,4 +1,4 @@
-# YouTube_BI_Team
+# YouTube_BI_Team (content of latest video)
 
 --Table setup
 
