@@ -1,12 +1,12 @@
 # YouTube_BI_Team
 
-Table setup
+--Table setup
 
-Sample data insertion
+--Sample data insertion
 
-Function for dynamic filtering
+--Function for dynamic filtering
 
-Stored procedure for business rules
+--Stored procedure for business rules
 
-Query examples to see results
+--Query examples to see results
 
