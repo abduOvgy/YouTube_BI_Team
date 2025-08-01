@@ -1,0 +1,74 @@
+-- Dimension table for employees (SCD Type 2)
+CREATE TABLE DimEmployee (
+    EmployeeSK INT IDENTITY(1,1) PRIMARY KEY,  -- Surrogate key
+    EmployeeID INT,                            -- Natural key from source system
+    FirstName NVARCHAR(50),
+    LastName NVARCHAR(50),
+    Department NVARCHAR(50),
+    StartDate DATE,
+    EndDate DATE,
+    IsCurrent BIT
+);
+INSERT INTO DimEmployee (EmployeeID, FirstName, LastName, Department, StartDate, EndDate, IsCurrent)
+VALUES
+(1, 'Alice', 'Smith', 'Sales', '2023-01-01', NULL, 1),
+(2, 'Bob', 'Johnson', 'HR', '2023-01-01', NULL, 1);
+CREATE PROCEDURE UpdateDimEmployee
+    @EmployeeID INT,
+    @FirstName NVARCHAR(50),
+    @LastName NVARCHAR(50),
+    @Department NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @CurrentDept NVARCHAR(50);
+
+    -- 1. Check if employee exists and get current department
+    SELECT @CurrentDept = Department
+    FROM DimEmployee
+    WHERE EmployeeID = @EmployeeID AND IsCurrent = 1;
+
+    -- 2. If employee does not exist, insert as new
+    IF @CurrentDept IS NULL
+    BEGIN
+        INSERT INTO DimEmployee (EmployeeID, FirstName, LastName, Department, StartDate, EndDate, IsCurrent)
+        VALUES (@EmployeeID, @FirstName, @LastName, @Department, GETDATE(), NULL, 1);
+    END
+    ELSE
+    BEGIN
+        -- 3. If department is the same, do nothing
+        IF @CurrentDept = @Department
+        BEGIN
+            PRINT 'No change detected for Employee ' + CAST(@EmployeeID AS NVARCHAR);
+            RETURN;
+        END
+
+        -- 4. Close old record
+        UPDATE DimEmployee
+        SET EndDate = GETDATE(), IsCurrent = 0
+        WHERE EmployeeID = @EmployeeID AND IsCurrent = 1;
+
+        -- 5. Insert new record with updated department
+        INSERT INTO DimEmployee (EmployeeID, FirstName, LastName, Department, StartDate, EndDate, IsCurrent)
+        VALUES (@EmployeeID, @FirstName, @LastName, @Department, GETDATE(), NULL, 1);
+
+        PRINT 'Department updated for Employee ' + CAST(@EmployeeID AS NVARCHAR);
+    END
+END;
+-- No change: same department
+EXEC UpdateDimEmployee 1, 'Alice', 'Smith', 'Sales';
+
+-- Change department: Sales → Marketing
+EXEC UpdateDimEmployee 1, 'Alice', 'Smith', 'Marketing';
+
+-- New employee
+EXEC UpdateDimEmployee 3, 'Carol', 'Lee', 'Finance';
+-- No change: same department
+EXEC UpdateDimEmployee 1, 'Alice', 'Smith', 'Sales';
+
+-- Change department: Sales → Marketing
+EXEC UpdateDimEmployee 1, 'Alice', 'Smith', 'Marketing';
+
+-- New employee
+EXEC UpdateDimEmployee 3, 'Carol', 'Lee', 'Finance';
