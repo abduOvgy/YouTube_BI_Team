@@ -1,0 +1,83 @@
+/*
+========================================================
+SCD Type 4 Example - Employee Department Changes
+Date: 2025-08-06
+Description:
+ - Tracks only the latest record in Employee_Current
+ - Moves old record to Employee_History on department change
+========================================================
+*/
+
+-- 1️⃣ Drop existing tables (for demo purposes)
+DROP TABLE IF EXISTS Employee_History;
+DROP TABLE IF EXISTS Employee_Current;
+
+--------------------------------------------------------
+-- 2️⃣ Create Current Table
+--------------------------------------------------------
+CREATE TABLE Employee_Current (
+    EmployeeID INT PRIMARY KEY,
+    Name NVARCHAR(100),
+    Department NVARCHAR(50),
+    StartDate DATE,
+    LastUpdatedDate DATE
+);
+
+--------------------------------------------------------
+-- 3️⃣ Create History Table
+--------------------------------------------------------
+CREATE TABLE Employee_History (
+    HistoryID INT IDENTITY PRIMARY KEY,
+    EmployeeID INT,
+    Name NVARCHAR(100),
+    Department NVARCHAR(50),
+    StartDate DATE,
+    EndDate DATE
+);
+
+--------------------------------------------------------
+-- 4️⃣ Insert Initial Data
+--------------------------------------------------------
+INSERT INTO Employee_Current (EmployeeID, Name, Department, StartDate, LastUpdatedDate)
+VALUES
+(1, 'Alice', 'Marketing', '2024-01-01', '2024-01-01'),
+(2, 'Bob', 'Sales', '2024-02-15', '2024-02-15'),
+(3, 'Charlie', 'IT', '2024-03-20', '2024-03-20');
+
+--------------------------------------------------------
+-- 5️⃣ Show initial data
+--------------------------------------------------------
+PRINT '--- Initial Current Table ---';
+SELECT * FROM Employee_Current;
+
+PRINT '--- Initial History Table ---';
+SELECT * FROM Employee_History;
+
+--------------------------------------------------------
+-- 6️⃣ Department Change Logic (Alice moves from Marketing → HR)
+--------------------------------------------------------
+DECLARE @EmpID INT = 1;
+DECLARE @NewDept NVARCHAR(50) = 'HR';
+DECLARE @Today DATE = GETDATE();
+
+-- Step 1: Move old record to history
+INSERT INTO Employee_History (EmployeeID, Name, Department, StartDate, EndDate)
+SELECT EmployeeID, Name, Department, StartDate, @Today
+FROM Employee_Current
+WHERE EmployeeID = @EmpID;
+
+-- Step 2: Update current table with new department
+UPDATE Employee_Current
+SET Department = @NewDept,
+    StartDate = @Today,
+    LastUpdatedDate = @Today
+WHERE EmployeeID = @EmpID;
+
+--------------------------------------------------------
+-- 7️⃣ Show results after change
+--------------------------------------------------------
+PRINT '--- Current Table After Change ---';
+SELECT * FROM Employee_Current;
+
+PRINT '--- History Table After Change ---';
+SELECT * FROM Employee_History;
