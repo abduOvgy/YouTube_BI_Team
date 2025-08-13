@@ -1,0 +1,99 @@
+-- ========================================
+-- SCD Type 2 Example – Employee Payroll
+-- ========================================
+
+-- 1. Drop old tables if they exist
+DROP TABLE IF EXISTS Fact_Payroll;
+DROP TABLE IF EXISTS Dim_Employee;
+
+-- 2. Create Dimension Table
+CREATE TABLE Dim_Employee (
+    Employee_Key INT PRIMARY KEY AUTO_INCREMENT,
+    Employee_ID INT,
+    Employee_Name VARCHAR(100),
+    Department VARCHAR(50),
+    Start_Date DATE,
+    End_Date DATE,
+    Current_Flag CHAR(1)
+);
+
+-- 3. Create Fact Table
+CREATE TABLE Fact_Payroll (
+    Payroll_Key INT PRIMARY KEY AUTO_INCREMENT,
+    Employee_Key INT,
+    PayDate DATE,
+    Amount DECIMAL(10,2),
+    FOREIGN KEY (Employee_Key) REFERENCES Dim_Employee(Employee_Key)
+);
+
+-- 4. Insert Initial Dimension Data
+INSERT INTO Dim_Employee (Employee_ID, Employee_Name, Department, Start_Date, End_Date, Current_Flag)
+VALUES
+(1, 'John Smith', 'Finance', '2024-01-01', NULL, 'Y'),
+(2, 'Mary Johnson', 'IT', '2024-01-01', NULL, 'Y');
+
+-- 5. Insert Sample Fact Data
+INSERT INTO Fact_Payroll (Employee_Key, PayDate, Amount)
+VALUES
+(1, '2024-01-31', 3000.00),
+(2, '2024-01-31', 3200.00);
+
+-- 6. Show initial data
+SELECT f.PayDate, e.Employee_Name, e.Department, f.Amount
+FROM Fact_Payroll f
+JOIN Dim_Employee e
+    ON f.Employee_Key = e.Employee_Key
+WHERE e.Current_Flag = 'Y';
+
+-- ========================================
+-- 7. SCD Type 2 Procedure (Department Change)
+-- ========================================
+DELIMITER //
+CREATE PROCEDURE Update_Employee_Department(
+    IN p_Employee_ID INT,
+    IN p_New_Department VARCHAR(50),
+    IN p_Change_Date DATE
+)
+BEGIN
+    DECLARE v_old_key INT;
+
+    -- Get current employee key
+    SELECT Employee_Key INTO v_old_key
+    FROM Dim_Employee
+    WHERE Employee_ID = p_Employee_ID
+      AND Current_Flag = 'Y';
+
+    -- Close old record
+    UPDATE Dim_Employee
+    SET End_Date = DATE_SUB(p_Change_Date, INTERVAL 1 DAY),
+        Current_Flag = 'N'
+    WHERE Employee_Key = v_old_key;
+
+    -- Insert new record
+    INSERT INTO Dim_Employee (Employee_ID, Employee_Name, Department, Start_Date, End_Date, Current_Flag)
+    SELECT Employee_ID, Employee_Name, p_New_Department, p_Change_Date, NULL, 'Y'
+    FROM Dim_Employee
+    WHERE Employee_Key = v_old_key;
+END //
+DELIMITER ;
+
+-- ========================================
+-- 8. Run the procedure to change John's department
+-- ========================================
+CALL Update_Employee_Department(1, 'HR', '2024-03-01');
+
+-- 9. Insert new fact data after the department change
+INSERT INTO Fact_Payroll (Employee_Key, PayDate, Amount)
+SELECT Employee_Key, '2024-03-31', 3100.00
+FROM Dim_Employee
+WHERE Employee_ID = 1
+  AND Current_Flag = 'Y';
+
+-- ========================================
+-- 10. View updated payroll data
+-- ========================================
+SELECT f.PayDate, e.Employee_Name, e.Department, f.Amount
+FROM Fact_Payroll f
+JOIN Dim_Employee e
+    ON f.Employee_Key = e.Employee_Key
+WHERE e.Current_Flag = 'Y';
