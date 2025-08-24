@@ -1,0 +1,111 @@
+-------------------------------------------------------
+-- Step 1: Create DimCalendar
+-------------------------------------------------------
+CREATE TABLE DimCalendar (
+    DateKey INT PRIMARY KEY,      -- yyyymmdd
+    FullDate DATE,
+    Year INT,
+    Month INT,
+    MonthName VARCHAR(20),
+    DayOfMonth INT,
+    DayOfWeek INT,
+    WeekOfYear INT
+);
+
+-- Populate calendar for 2024 (365 days)
+DECLARE @d DATE = '2024-01-01';
+WHILE @d <= '2024-12-31'
+BEGIN
+    INSERT INTO DimCalendar (DateKey, FullDate, Year, Month, MonthName, DayOfMonth, DayOfWeek, WeekOfYear)
+    VALUES (
+        CONVERT(INT, FORMAT(@d,'yyyyMMdd')),
+        @d,
+        YEAR(@d),
+        MONTH(@d),
+        DATENAME(MONTH, @d),
+        DAY(@d),
+        DATEPART(WEEKDAY,@d),
+        DATEPART(WEEK,@d)
+    );
+    SET @d = DATEADD(DAY,1,@d);
+END;
+
+-------------------------------------------------------
+-- Step 2: Create FactEmployeeEvent
+-------------------------------------------------------
+CREATE TABLE FactEmployeeEvent (
+    EmployeeID INT PRIMARY KEY,
+    HireDateKey INT NULL,
+    PromotionDateKey INT NULL,
+    TerminationDateKey INT NULL,
+    SalaryAtEvent DECIMAL(10,2),
+    YearsInRole INT
+);
+
+-------------------------------------------------------
+-- Step 3: Create StagingEmployee (raw employee data)
+-------------------------------------------------------
+CREATE TABLE StagingEmployee (
+    EmployeeID INT,
+    HireDate DATE,
+    PromotionDate DATE NULL,
+    TerminationDate DATE NULL,
+    SalaryAtEvent DECIMAL(10,2),
+    YearsInRole INT
+);
+
+-- Insert 10 sample employees 
+INSERT INTO StagingEmployee (EmployeeID,HireDate,PromotionDate,TerminationDate,SalaryAtEvent,YearsInRole)
+VALUES
+(1,'2024-01-10','2024-05-15',NULL,42000,1),
+(2,'2024-01-20','2024-06-01','2024-09-30',50000,2),
+(3,'2024-02-01',NULL,NULL,39000,0),
+(4,'2024-02-10','2024-07-20',NULL,61000,3),
+(5,'2024-03-05',NULL,'2024-11-10',45000,1),
+(6,'2024-01-15','2024-04-10',NULL,47000,1),
+(7,'2024-02-18',NULL,NULL,52000,2),
+(8,'2024-03-25','2024-08-05','2024-12-01',58000,4),
+(9,'2024-01-30','2024-05-12',NULL,49500,2),
+(10,'2024-02-12',NULL,NULL,43000,1);
+
+-------------------------------------------------------
+-- Step 4: Stored Procedure to Populate Fact
+-------------------------------------------------------
+CREATE PROCEDURE LoadFactEmployeeEvent
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Clear Fact first
+    TRUNCATE TABLE FactEmployeeEvent;
+
+    INSERT INTO FactEmployeeEvent (EmployeeID, HireDateKey, PromotionDateKey, TerminationDateKey, SalaryAtEvent, YearsInRole)
+    SELECT
+        s.EmployeeID,
+        c1.DateKey AS HireDateKey,
+        c2.DateKey AS PromotionDateKey,
+        c3.DateKey AS TerminationDateKey,
+        s.SalaryAtEvent,
+        s.YearsInRole
+    FROM StagingEmployee s
+    LEFT JOIN DimCalendar c1 ON s.HireDate = c1.FullDate
+    LEFT JOIN DimCalendar c2 ON s.PromotionDate = c2.FullDate
+    LEFT JOIN DimCalendar c3 ON s.TerminationDate = c3.FullDate;
+END;
+
+-------------------------------------------------------
+-- Step 5: Execute the procedure
+-------------------------------------------------------
+EXEC LoadFactEmployeeEvent;
+
+-------------------------------------------------------
+-- Step 6: Example Query - Role Playing Dimension
+-------------------------------------------------------
+SELECT 
+    f.EmployeeID,
+    h.Year AS HireYear, h.MonthName AS HireMonth,
+    p.Year AS PromoYear, p.MonthName AS PromoMonth,
+    f.SalaryAtEvent, f.YearsInRole
+FROM FactEmployeeEvent f
+LEFT JOIN DimCalendar h ON f.HireDateKey = h.DateKey
+LEFT JOIN DimCalendar p ON f.PromotionDateKey = p.DateKey;
