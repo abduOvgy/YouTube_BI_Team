@@ -1,0 +1,51 @@
+-- Create a table for fruits with explicit IDs
+CREATE TABLE dbo.FruitTable (
+    ID INT PRIMARY KEY,   -- unique ID for each row
+    Name NVARCHAR(50),    -- name of the fruit
+    Color NVARCHAR(20)    -- color of the fruit
+);
+
+-- Insert 20 rows with explicit IDs (4 Bananas included)
+INSERT INTO dbo.FruitTable (ID, Name, Color) VALUES
+(1, 'Apple', 'Red'), 
+(2, 'Banana', 'Yellow'), 
+(3, 'Cherry', 'Red'),
+(4, 'Banana', 'Yellow'), 
+(5, 'Apple', 'Green'), 
+(6, 'Grape', 'Purple'), 
+(7, 'Banana', 'Yellow'),
+(8, 'Cherry', 'Red'), 
+(9, 'Apple', 'Red'), 
+(10, 'Banana', 'Yellow'),
+(11, 'Mango', 'Yellow'),
+(12, 'Pear', 'Green'),
+(13, 'Peach', 'Pink'),
+(14, 'Plum', 'Purple'),
+(15, 'Kiwi', 'Green'),
+(16, 'Orange', 'Orange'),
+(17, 'Lemon', 'Yellow'),
+(18, 'Blueberry', 'Blue'),
+(19, 'Strawberry', 'Red'),
+(20, 'Watermelon', 'Green');
+
+-- Create a clustered index on the ID column (sorts table by ID)
+CREATE CLUSTERED INDEX IX_FruitTable_ID ON dbo.FruitTable(ID);
+
+-- Create a nonclustered index on the Name column to speed up searches
+CREATE NONCLUSTERED INDEX IX_FruitTable_Name ON dbo.FruitTable(Name);
+
+-- Query to find all Bananas (uses the nonclustered index)
+SELECT * FROM dbo.FruitTable WHERE Name = 'Banana';
+
+-- Create a stored procedure to look up fruits by name
+CREATE OR ALTER PROCEDURE dbo.GetFruitByName
+    @FruitName NVARCHAR(50)
+AS
+BEGIN
+    SELECT * 
+    FROM dbo.FruitTable
+    WHERE Name = @FruitName;
+END;
+
+-- Execute the stored procedure to get all Bananas
+EXEC dbo.GetFruitByName @FruitName = 'Banana';
