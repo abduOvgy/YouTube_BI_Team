@@ -1,0 +1,58 @@
+-- 1) Create tables
+CREATE TABLE Employees (
+    EmpID INT IDENTITY PRIMARY KEY,
+    Name NVARCHAR(100)
+);
+
+CREATE TABLE EmployeeStats (
+    EmpID INT PRIMARY KEY,
+    TotalEmployees INT
+);
+
+-- Seed EmployeeStats with a starting row
+INSERT INTO EmployeeStats (EmpID, TotalEmployees) VALUES (1, 0);
+
+-- 2) Nested trigger: After inserting an employee, update EmployeeStats
+CREATE OR ALTER TRIGGER trgAfterInsertEmployee
+ON dbo.Employees
+AFTER INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Simple update: increment TotalEmployees by 1 for the seeded row
+    UPDATE EmployeeStats
+    SET TotalEmployees = TotalEmployees + 1
+    WHERE EmpID = 1;
+END;
+
+-- 3) Recursive trigger: After updating EmployeeStats, update it again
+CREATE OR ALTER TRIGGER trgRecursiveStats
+ON dbo.EmployeeStats
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Only increment if TotalEmployees < 5 to avoid infinite recursion
+    UPDATE EmployeeStats
+    SET TotalEmployees = TotalEmployees + 1
+    WHERE EmpID = 1 AND TotalEmployees < 5;
+END;
+
+-- 4) Enable recursive triggers
+ALTER DATABASE CURRENT SET RECURSIVE_TRIGGERS ON;
+
+-- 5) Test: Insert a new employee (fires nested + recursive triggers)
+INSERT INTO Employees (Name) VALUES ('Alice');
+
+-- 6) Check results
+SELECT * FROM Employees;
+SELECT * FROM EmployeeStats;
+
+-- 7) Disable recursive triggers and test again
+ALTER DATABASE CURRENT SET RECURSIVE_TRIGGERS OFF;
+INSERT INTO Employees (Name) VALUES ('Bob');
+
+SELECT * FROM Employees;
+SELECT * FROM EmployeeStats;
