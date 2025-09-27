@@ -26,7 +26,7 @@ BEGIN
     WHERE EmpID = 1;
 END;
 
--- 3) Recursive trigger: After updating EmployeeStats, update it again
+-- 3) Fix: Only allow the initial nested call, prevent the recursion itself
 CREATE OR ALTER TRIGGER trgRecursiveStats
 ON dbo.EmployeeStats
 AFTER UPDATE
@@ -34,11 +34,18 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Only increment if TotalEmployees < 5 to avoid infinite recursion
-    UPDATE EmployeeStats
-    SET TotalEmployees = TotalEmployees + 1
-    WHERE EmpID = 1 AND TotalEmployees < 5;
+    -- Only allow the *first* execution (the one from trgAfterInsertEmployee) to proceed.
+    -- Prevent the trigger from firing itself recursively a second time.
+    IF (@@NESTLEVEL <= 2 AND UPDATE(TotalEmployees))
+    BEGIN
+        -- Original logic to limit the count, but now protected from infinite recursion
+        UPDATE EmployeeStats
+        SET TotalEmployees = TotalEmployees + 1
+        WHERE StatsID = 1 AND TotalEmployees < 5;
+    END
+    -- If @@NESTLEVEL > 2, the trigger exits immediately, breaking the recursion chain.
 END;
+
 
 -- 4) Enable recursive triggers
 ALTER DATABASE CURRENT SET RECURSIVE_TRIGGERS ON;
