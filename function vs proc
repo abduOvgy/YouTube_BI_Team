@@ -1,0 +1,83 @@
+-- =============================================
+-- 📌 Part 1: Create the Employees Table
+-- =============================================
+CREATE TABLE Employees (
+    EmployeeID INT PRIMARY KEY,
+    FirstName NVARCHAR(50),
+    LastName NVARCHAR(50),
+    Title NVARCHAR(100),
+    Salary DECIMAL(10, 2),
+    YearsAtCompany INT,
+    Department NVARCHAR(50)
+);
+
+-- =============================================
+-- 📌 Part 2: Insert Sample Data (10 rows shown here)
+-- =============================================
+INSERT INTO Employees VALUES
+(1, 'Alice', 'Smith', 'Engineer', 60000, 6, 'Engineering'),
+(2, 'Bob', 'Johnson', 'Salesperson', 48000, 3, 'Sales'),
+(3, 'Carol', 'Lee', 'Engineer', 50000, 7, 'Engineering'),
+(4, 'David', 'Brown', 'Salesperson', 45000, 6, 'Sales'),
+(5, 'Eva', 'Davis', 'HR Specialist', 52000, 4, 'HR'),
+(6, 'Frank', 'Garcia', 'Engineer', 62000, 8, 'Engineering'),
+(7, 'Grace', 'Martinez', 'Salesperson', 39000, 6, 'Sales'),
+(8, 'Hank', 'Miller', 'Engineer', 70000, 2, 'Engineering'),
+(9, 'Ivy', 'Wilson', 'Salesperson', 46000, 7, 'Sales'),
+(10, 'Jake', 'Moore', 'Engineer', 58000, 5, 'Engineering');
+
+-- =============================================
+-- 📌 Part 3: View the Employees Table
+-- =============================================
+SELECT * FROM Employees;
+
+-- =============================================
+-- 📌 Part 4: Create a Function for Dynamic Filtering
+-- ✅ Returns employees eligible for promotion based on criteria
+-- =============================================
+CREATE FUNCTION ufn_GetPromotableEmployees (
+    @minYears INT,
+    @maxSalary DECIMAL(10, 2)
+)
+RETURNS TABLE
+AS
+RETURN (
+    SELECT *
+    FROM Employees
+    WHERE YearsAtCompany >= @minYears AND Salary <= @maxSalary
+);
+
+-- =============================================
+-- 📌 Part 5: Use the Function (Safe Read-Only)
+-- =============================================
+SELECT * FROM dbo.ufn_GetPromotableEmployees(5, 70000);
+
+-- =============================================
+-- 📌 Part 6: Create a Stored Procedure for Actual Promotions
+-- ✅ Updates records based on business rules
+-- =============================================
+CREATE PROCEDURE PromoteEligibleEmployees
+AS
+BEGIN
+    UPDATE Employees
+    SET 
+        Title = 'Senior ' + Title,
+        Salary = Salary * 1.10
+    WHERE YearsAtCompany >= 5 AND Salary <= 70000;
+
+    PRINT 'Promotion applied successfully!';
+END;
+
+-- =============================================
+-- 📌 Part 7: Execute the Stored Procedure
+-- =============================================
+EXEC PromoteEligibleEmployees;
+
+-- =============================================
+-- 📌 Part 8: Verify the Changes in the Employees Table
+-- =============================================
+SELECT * FROM Employees;
+
+-- =============================================
+-- ✅ End of Script
+-- =============================================

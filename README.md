@@ -1,4 +1,6 @@
-# YouTube_BI_Team
+# YouTube_BI_Team (content of latest video)
+
+<https://www.youtube.com/playlist?list=PLjP3hIIbHuXZTjKuMVtbI0qQFJXSUKeRY>
 
 --Table setup
 
